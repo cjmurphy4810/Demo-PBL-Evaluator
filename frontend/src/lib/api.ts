@@ -4,7 +4,9 @@ export {
   getEntitlement,
   deleteEntitlement,
   evaluateInline,
+  evaluateRbacInline,
   reEvaluate,
+  reEvaluateRbac,
   getEvaluationHistory,
   getSummary,
 } from "./local-store";

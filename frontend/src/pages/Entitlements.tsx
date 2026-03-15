@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listEntitlements, deleteEntitlement, reEvaluate } from "../lib/api";
-import type { Entitlement, Evaluation } from "../types/api";
+import { listEntitlements, deleteEntitlement, reEvaluate, reEvaluateRbac } from "../lib/api";
+import type { Entitlement, Evaluation, RbacEvaluation } from "../types/api";
 import EvaluationResults from "../components/EvaluationResults";
+import RbacResults from "../components/RbacResults";
+
+type EvalMode = "pbl" | "rbac";
 
 export default function Entitlements() {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
+  const [viewMode, setViewMode] = useState<EvalMode>("pbl");
   const [selected, setSelected] = useState<{
     entitlement: Entitlement;
-    evaluation: Evaluation;
+    pblEvaluation?: Evaluation;
+    rbacEvaluation?: RbacEvaluation;
   } | null>(null);
 
   const queryClient = useQueryClient();
@@ -33,20 +38,42 @@ export default function Entitlements() {
     },
   });
 
-  const reEvalMut = useMutation({
+  const reEvalPblMut = useMutation({
     mutationFn: reEvaluate,
     onSuccess: (data, entitlementId) => {
       queryClient.invalidateQueries({ queryKey: ["entitlements"] });
       const ent = entitlements?.find((e) => e.id === entitlementId);
       if (ent) {
-        setSelected({ entitlement: ent, evaluation: data.evaluation });
+        setSelected((prev) => ({
+          ...prev,
+          entitlement: ent,
+          pblEvaluation: data.evaluation,
+        }));
+      }
+    },
+  });
+
+  const reEvalRbacMut = useMutation({
+    mutationFn: reEvaluateRbac,
+    onSuccess: (data, entitlementId) => {
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] });
+      const ent = entitlements?.find((e) => e.id === entitlementId);
+      if (ent) {
+        setSelected((prev) => ({
+          ...prev,
+          entitlement: ent,
+          rbacEvaluation: data.evaluation,
+        }));
       }
     },
   });
 
   const handleRowClick = (ent: Entitlement) => {
-    reEvalMut.mutate(ent.id);
+    reEvalPblMut.mutate(ent.id);
+    reEvalRbacMut.mutate(ent.id);
   };
+
+  const isPending = reEvalPblMut.isPending || reEvalRbacMut.isPending;
 
   return (
     <div className="space-y-6">
@@ -99,7 +126,7 @@ export default function Entitlements() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Resource</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Access</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Source</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Roles</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
@@ -126,16 +153,31 @@ export default function Entitlements() {
                   <td className="px-4 py-3">
                     <span className="capitalize">{ent.access_level}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{ent.source}</td>
+                  <td className="px-4 py-3">
+                    {ent.roles && ent.roles.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {ent.roles.slice(0, 2).map((r) => (
+                          <span key={r} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                            {r}
+                          </span>
+                        ))}
+                        {ent.roles.length > 2 && (
+                          <span className="text-xs text-gray-400">+{ent.roles.length - 2}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">None</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-3"
                       onClick={(e) => {
                         e.stopPropagation();
-                        reEvalMut.mutate(ent.id);
+                        handleRowClick(ent);
                       }}
                     >
-                      Re-evaluate
+                      Review
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 text-xs font-medium"
@@ -156,15 +198,15 @@ export default function Entitlements() {
         </div>
       )}
 
-      {/* Loading indicator for re-evaluation */}
-      {reEvalMut.isPending && (
+      {/* Loading indicator */}
+      {isPending && (
         <div className="text-center py-4 text-blue-600 text-sm">
           Evaluating...
         </div>
       )}
 
       {/* Detail Panel */}
-      {selected && (
+      {selected && (selected.pblEvaluation || selected.rbacEvaluation) && (
         <div className="bg-white rounded-lg border p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">{selected.entitlement.name}</h2>
@@ -192,6 +234,26 @@ export default function Entitlements() {
               <span className="text-gray-500 block">Description</span>
               <span className="font-medium">{selected.entitlement.description}</span>
             </div>
+            {selected.entitlement.roles && selected.entitlement.roles.length > 0 && (
+              <div>
+                <span className="text-gray-500 block">Roles</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selected.entitlement.roles.map((r) => (
+                    <span key={r} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {selected.entitlement.divisions && selected.entitlement.divisions.length > 0 && (
+              <div>
+                <span className="text-gray-500 block">Divisions</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {selected.entitlement.divisions.map((d) => (
+                    <span key={d} className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">{d}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             {selected.entitlement.conditions && (
               <div className="col-span-2">
                 <span className="text-gray-500 block">Conditions</span>
@@ -214,8 +276,38 @@ export default function Entitlements() {
 
           <hr className="mb-6" />
 
-          {/* Evaluation Results with Score Explanation */}
-          <EvaluationResults evaluation={selected.evaluation} />
+          {/* Toggle between PBL and RBAC results */}
+          <div className="flex rounded-lg border border-gray-300 mb-6 overflow-hidden">
+            <button
+              type="button"
+              className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                viewMode === "pbl"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+              onClick={() => setViewMode("pbl")}
+            >
+              PBL Quality
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                viewMode === "rbac"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+              onClick={() => setViewMode("rbac")}
+            >
+              RBAC Design
+            </button>
+          </div>
+
+          {viewMode === "pbl" && selected.pblEvaluation && (
+            <EvaluationResults evaluation={selected.pblEvaluation} />
+          )}
+          {viewMode === "rbac" && selected.rbacEvaluation && (
+            <RbacResults evaluation={selected.rbacEvaluation} />
+          )}
         </div>
       )}
     </div>

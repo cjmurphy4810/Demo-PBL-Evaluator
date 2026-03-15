@@ -5,10 +5,13 @@ import type {
   Evaluation,
   EvaluateRequest,
   EvaluateResponse,
+  RbacEvaluation,
+  RbacEvaluateResponse,
   SummaryReport,
 } from "../types/api";
 import { evaluateRules } from "./rule-engine";
 import { classifyTier } from "./tier-classifier";
+import { evaluateRbac } from "./rbac-engine";
 
 const ENTITLEMENTS_KEY = "pbl_entitlements";
 const EVALUATIONS_KEY = "pbl_evaluations";
@@ -19,7 +22,14 @@ function uuid(): string {
 
 function loadEntitlements(): Entitlement[] {
   const raw = localStorage.getItem(ENTITLEMENTS_KEY);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  // Migrate old records that don't have roles/divisions
+  const items: Entitlement[] = JSON.parse(raw);
+  return items.map((e) => ({
+    ...e,
+    roles: e.roles ?? [],
+    divisions: e.divisions ?? [],
+  }));
 }
 
 function saveEntitlements(items: Entitlement[]) {
@@ -70,7 +80,7 @@ function generateRecommendations(flags: string[]): string[] {
 function runEvaluation(data: EvaluateRequest, entitlementId: string): Evaluation {
   const rules = evaluateRules(data);
   const tier = classifyTier(data);
-  const finalScore = rules.rule_score; // rules-only, no LLM
+  const finalScore = rules.rule_score;
   const grade = gradeFromScore(finalScore);
   const recommendations = generateRecommendations(rules.flags);
 
@@ -97,9 +107,7 @@ function runEvaluation(data: EvaluateRequest, entitlementId: string): Evaluation
   };
 }
 
-// --- Public API (same signatures as the old fetch-based api.ts) ---
-
-export async function evaluateInline(data: EvaluateRequest): Promise<EvaluateResponse> {
+function findOrCreateEntitlement(data: EvaluateRequest): Entitlement {
   const entitlements = loadEntitlements();
   const now = new Date().toISOString();
 
@@ -113,6 +121,8 @@ export async function evaluateInline(data: EvaluateRequest): Promise<EvaluateRes
     conditions: data.conditions ?? null,
     business_justification: data.business_justification ?? null,
     owner: data.owner ?? null,
+    roles: data.roles ?? [],
+    divisions: data.divisions ?? [],
     source: "manual",
     created_at: now,
     updated_at: now,
@@ -120,11 +130,38 @@ export async function evaluateInline(data: EvaluateRequest): Promise<EvaluateRes
 
   entitlements.push(entitlement);
   saveEntitlements(entitlements);
+  return entitlement;
+}
 
+// --- Public API ---
+
+export async function evaluateInline(data: EvaluateRequest): Promise<EvaluateResponse> {
+  const entitlement = findOrCreateEntitlement(data);
   const evaluation = runEvaluation(data, entitlement.id);
   const evaluations = loadEvaluations();
   evaluations.push(evaluation);
   saveEvaluations(evaluations);
+
+  return { entitlement_id: entitlement.id, evaluation };
+}
+
+export async function evaluateRbacInline(data: EvaluateRequest): Promise<RbacEvaluateResponse> {
+  const entitlement = findOrCreateEntitlement(data);
+  const rbacResult = evaluateRbac(data);
+
+  const evaluation: RbacEvaluation = {
+    id: uuid(),
+    entitlement_id: entitlement.id,
+    final_score: rbacResult.final_score,
+    quality_grade: rbacResult.quality_grade,
+    risk_tier: rbacResult.risk_tier,
+    dimensions: rbacResult.dimensions,
+    flags: rbacResult.flags,
+    recommendations: rbacResult.recommendations,
+    findings: rbacResult.findings,
+    evaluation_method: "rbac_design_review",
+    evaluated_at: new Date().toISOString(),
+  };
 
   return { entitlement_id: entitlement.id, evaluation };
 }
@@ -144,6 +181,35 @@ export async function reEvaluate(entitlementId: string): Promise<EvaluateRespons
   const evaluations = loadEvaluations();
   evaluations.push(evaluation);
   saveEvaluations(evaluations);
+
+  return { entitlement_id: entitlementId, evaluation };
+}
+
+export async function reEvaluateRbac(entitlementId: string): Promise<RbacEvaluateResponse> {
+  const entitlements = loadEntitlements();
+  const ent = entitlements.find((e) => e.id === entitlementId);
+  if (!ent) throw new Error("Entitlement not found");
+
+  const rbacResult = evaluateRbac({
+    ...ent,
+    conditions: ent.conditions ?? undefined,
+    business_justification: ent.business_justification ?? undefined,
+    owner: ent.owner ?? undefined,
+  });
+
+  const evaluation: RbacEvaluation = {
+    id: uuid(),
+    entitlement_id: entitlementId,
+    final_score: rbacResult.final_score,
+    quality_grade: rbacResult.quality_grade,
+    risk_tier: rbacResult.risk_tier,
+    dimensions: rbacResult.dimensions,
+    flags: rbacResult.flags,
+    recommendations: rbacResult.recommendations,
+    findings: rbacResult.findings,
+    evaluation_method: "rbac_design_review",
+    evaluated_at: new Date().toISOString(),
+  };
 
   return { entitlement_id: entitlementId, evaluation };
 }
@@ -201,7 +267,6 @@ export async function getSummary(): Promise<SummaryReport> {
   const entitlements = loadEntitlements();
   const evaluations = loadEvaluations();
 
-  // Get latest evaluation per entitlement
   const latestEvals = new Map<string, Evaluation>();
   for (const ev of evaluations) {
     const existing = latestEvals.get(ev.entitlement_id);

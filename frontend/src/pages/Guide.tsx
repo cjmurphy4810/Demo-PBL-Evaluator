@@ -206,6 +206,157 @@ export default function Guide() {
           </div>
         </div>
       </Section>
+
+      {/* RBAC Design Review Engine */}
+      <Section title="RBAC Design Review Engine">
+        <div className="space-y-6 text-gray-700">
+          <p>
+            The RBAC Design Review mode evaluates entitlement definitions from a{" "}
+            <strong>role-based access control (RBAC) design quality</strong>{" "}
+            perspective. While PBL Quality Review focuses on how well the
+            entitlement is written, RBAC Design Review assesses whether the
+            entitlement is correctly designed from a security and governance
+            standpoint.
+          </p>
+
+          <p>
+            This evaluation is grounded in the{" "}
+            <strong>ISACA CISA Review Manual</strong> (Chapter 5 — Protection
+            of Information Assets, specifically Separation of Duties and
+            Logical Access Controls), <strong>NIST SP 800-53 AC-5</strong>{" "}
+            (Separation of Duties), <strong>AC-6</strong> (Least Privilege),
+            and <strong>ISO 27001 A.9.2</strong> (User Access Management).
+          </p>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Five RBAC Dimensions
+            </h3>
+            <div className="space-y-4">
+              <DimensionCard
+                name="Title-Description Alignment"
+                weight={25}
+                description="Evaluates whether the entitlement's name accurately reflects what the description says it does. Mismatches between title and description are a leading cause of incorrect access provisioning and failed certification reviews. If the title says 'Wholesale Users Only' but the description is vague about who can use it, this is flagged as a critical design defect."
+              />
+              <DimensionCard
+                name="Role Appropriateness"
+                weight={25}
+                description="Assesses whether the assigned roles are appropriate for the access level granted. A Developer with admin access, a Business Analyst with write privileges, or an Auditor with modify permissions all represent potential violations of least-privilege principles (NIST AC-6). Each role has expected access patterns, and deviations are flagged with specific remediation guidance."
+              />
+              <DimensionCard
+                name="Separation of Duties"
+                weight={25}
+                description="Identifies role combinations within a single entitlement that violate separation of duties principles per ISACA CISA guidelines. For example, assigning both Developer and Tester roles to the same entitlement undermines independent testing validation. Developer and Auditor combinations compromise audit independence. Each conflict is evaluated against the CISA SoD matrix with severity ratings."
+              />
+              <DimensionCard
+                name="Scope Definition"
+                weight={15}
+                description="Evaluates whether the entitlement clearly defines access boundaries. Overly permissive language ('full control,' 'unrestricted') is flagged. External roles (Customer, Vendor) without explicit conditions represent critical gaps per NIST AC-17 (Remote Access). Well-scoped entitlements specify exactly what actions are permitted within what boundaries."
+              />
+              <DimensionCard
+                name="Division Relevance"
+                weight={10}
+                description="Checks whether the entitlement is appropriately scoped to specific business divisions. Entitlements spanning too many divisions suggest overly broad access that is difficult to certify and review. Division assignment supports proper governance routing during access certification campaigns."
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Separation of Duties (ISACA CISA)
+            </h3>
+            <p className="mb-3">
+              Per the ISACA CISA Review Manual, separation of duties is a key
+              control to prevent fraud, errors, and conflicts of interest. The
+              principle requires that no single individual or role should
+              control all phases of a business process. In the context of
+              entitlement design, this means certain role combinations within
+              a single entitlement are inherently risky:
+            </p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm">
+              <h4 className="font-semibold text-red-800 mb-2">
+                Key SoD Conflict Examples
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-red-900">
+                <li>
+                  <strong>Developer + Tester:</strong> The person writing
+                  the code should not be the person validating it
+                </li>
+                <li>
+                  <strong>Developer + Security Admin:</strong> Development
+                  and security gate-keeping must be independent
+                </li>
+                <li>
+                  <strong>System Admin + Auditor:</strong> You cannot
+                  independently audit systems you administer
+                </li>
+                <li>
+                  <strong>Database Admin + Developer:</strong> Combined
+                  access allows uncontrolled data and schema changes
+                </li>
+                <li>
+                  <strong>External Customer/Vendor + Any Admin:</strong>{" "}
+                  External parties must never hold administrative
+                  privileges
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              How to Use Both Review Modes
+            </h3>
+            <p>
+              The PBL Evaluator provides two complementary review modes
+              accessible via the toggle on the Evaluate page:
+            </p>
+            <div className="grid grid-cols-2 gap-4 mt-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800">
+                  PBL Quality Review
+                </h4>
+                <p className="text-sm text-blue-900 mt-1">
+                  Use when writing or rewriting entitlement definitions to
+                  ensure the language is clear, complete, and
+                  understandable by non-technical stakeholders. Best for
+                  entitlement authors drafting new definitions.
+                </p>
+              </div>
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <h4 className="font-semibold text-indigo-800">
+                  RBAC Design Review
+                </h4>
+                <p className="text-sm text-indigo-900 mt-1">
+                  Use when reviewing entitlement design for security and
+                  compliance. Checks role assignments, separation of
+                  duties, and title-description alignment. Best for
+                  entitlement owners during certification reviews.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              RBAC Score Calculation
+            </h3>
+            <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm text-center">
+              Final Score = (Title-Desc Alignment x 0.25) + (Role
+              Appropriateness x 0.25) + (Separation of Duties x 0.25) +
+              (Scope Definition x 0.15) + (Division Relevance x 0.10)
+            </div>
+            <p className="mt-3">
+              The three highest-weighted dimensions (25% each) reflect the
+              most critical RBAC design requirements: the entitlement must
+              be accurately named, assigned to appropriate roles, and free
+              of separation-of-duties conflicts. These are the areas where
+              design flaws create the greatest operational and compliance
+              risk.
+            </p>
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }
