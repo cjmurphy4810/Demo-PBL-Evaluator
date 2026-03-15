@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database
-    database_url: str = "postgresql://pbl:pbl@localhost:5432/pbl_evaluator"
+    database_url: str = "sqlite:///./pbl_evaluator.db"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
