@@ -6,7 +6,8 @@ import type {
   SummaryReport,
 } from "../types/api";
 
-const BASE = "/api/v1";
+const API_HOST = import.meta.env.VITE_API_URL || "";
+const BASE = `${API_HOST}/api/v1`;
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
