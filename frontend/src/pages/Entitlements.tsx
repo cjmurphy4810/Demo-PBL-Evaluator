@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listEntitlements, deleteEntitlement, reEvaluate } from "../lib/api";
 import type { Entitlement, Evaluation } from "../types/api";
-import GradeBadge from "../components/GradeBadge";
-import TierBadge from "../components/TierBadge";
 import EvaluationResults from "../components/EvaluationResults";
 
 export default function Entitlements() {
