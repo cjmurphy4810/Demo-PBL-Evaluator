@@ -1,10 +1,12 @@
 import { Routes, Route, NavLink } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
+import Guide from "./pages/Guide";
 import Evaluate from "./pages/Evaluate";
 import Entitlements from "./pages/Entitlements";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
+  { to: "/guide", label: "Guide" },
   { to: "/evaluate", label: "Evaluate" },
   { to: "/entitlements", label: "Entitlements" },
 ];
@@ -39,6 +41,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/guide" element={<Guide />} />
           <Route path="/evaluate" element={<Evaluate />} />
           <Route path="/entitlements" element={<Entitlements />} />
         </Routes>

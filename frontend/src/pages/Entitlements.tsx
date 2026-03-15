@@ -35,13 +35,18 @@ export default function Entitlements() {
 
   const reEvalMut = useMutation({
     mutationFn: reEvaluate,
-    onSuccess: (data) => {
+    onSuccess: (data, entitlementId) => {
       queryClient.invalidateQueries({ queryKey: ["entitlements"] });
-      if (selected) {
-        setSelected({ entitlement: selected.entitlement, evaluation: data.evaluation });
+      const ent = entitlements?.find((e) => e.id === entitlementId);
+      if (ent) {
+        setSelected({ entitlement: ent, evaluation: data.evaluation });
       }
     },
   });
+
+  const handleRowClick = (ent: Entitlement) => {
+    reEvalMut.mutate(ent.id);
+  };
 
   return (
     <div className="space-y-6">
@@ -102,14 +107,15 @@ export default function Entitlements() {
               {entitlements.map((ent) => (
                 <tr
                   key={ent.id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    // For now, show basic info without evaluation
-                    // A full implementation would fetch evaluation history
-                  }}
+                  className={`hover:bg-blue-50 cursor-pointer transition-colors ${
+                    selected?.entitlement.id === ent.id ? "bg-blue-50" : ""
+                  }`}
+                  onClick={() => handleRowClick(ent)}
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium">{ent.name}</div>
+                    <div className="font-medium text-blue-700 hover:text-blue-900">
+                      {ent.name}
+                    </div>
                     <div className="text-gray-500 text-xs truncate max-w-xs">
                       {ent.description}
                     </div>
@@ -150,6 +156,13 @@ export default function Entitlements() {
         </div>
       )}
 
+      {/* Loading indicator for re-evaluation */}
+      {reEvalMut.isPending && (
+        <div className="text-center py-4 text-blue-600 text-sm">
+          Evaluating...
+        </div>
+      )}
+
       {/* Detail Panel */}
       {selected && (
         <div className="bg-white rounded-lg border p-6">
@@ -162,6 +175,46 @@ export default function Entitlements() {
               Close
             </button>
           </div>
+
+          {/* Entitlement Summary */}
+          <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+            <div>
+              <span className="text-gray-500 block">Resource</span>
+              <span className="font-medium">
+                {selected.entitlement.resource_type} / {selected.entitlement.resource_name}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 block">Access Level</span>
+              <span className="font-medium capitalize">{selected.entitlement.access_level}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-500 block">Description</span>
+              <span className="font-medium">{selected.entitlement.description}</span>
+            </div>
+            {selected.entitlement.conditions && (
+              <div className="col-span-2">
+                <span className="text-gray-500 block">Conditions</span>
+                <span className="font-medium">{selected.entitlement.conditions}</span>
+              </div>
+            )}
+            {selected.entitlement.business_justification && (
+              <div className="col-span-2">
+                <span className="text-gray-500 block">Business Justification</span>
+                <span className="font-medium">{selected.entitlement.business_justification}</span>
+              </div>
+            )}
+            {selected.entitlement.owner && (
+              <div>
+                <span className="text-gray-500 block">Owner</span>
+                <span className="font-medium">{selected.entitlement.owner}</span>
+              </div>
+            )}
+          </div>
+
+          <hr className="mb-6" />
+
+          {/* Evaluation Results with Score Explanation */}
           <EvaluationResults evaluation={selected.evaluation} />
         </div>
       )}

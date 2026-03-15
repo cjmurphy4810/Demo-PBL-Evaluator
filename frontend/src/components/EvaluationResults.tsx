@@ -2,6 +2,7 @@ import type { Evaluation } from "../types/api";
 import GradeBadge from "./GradeBadge";
 import TierBadge from "./TierBadge";
 import ScoreBar from "./ScoreBar";
+import ScoreExplanation from "./ScoreExplanation";
 
 export default function EvaluationResults({
   evaluation,
@@ -88,6 +89,9 @@ export default function EvaluationResults({
           </ul>
         </div>
       )}
+
+      {/* Score Explanation */}
+      <ScoreExplanation evaluation={evaluation} />
     </div>
   );
 }
