@@ -4,6 +4,8 @@ import { listEntitlements, deleteEntitlement, reEvaluate, reEvaluateRbac } from 
 import type { Entitlement, Evaluation, RbacEvaluation } from "../types/api";
 import EvaluationResults from "../components/EvaluationResults";
 import RbacResults from "../components/RbacResults";
+import { exportCSV } from "../lib/export-csv";
+import { exportPDF, exportSinglePDF } from "../lib/export-pdf";
 
 type EvalMode = "pbl" | "rbac";
 
@@ -79,6 +81,22 @@ export default function Entitlements() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Entitlements</h1>
+        <div className="flex gap-2">
+          <button
+            className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            disabled={!entitlements?.length}
+            onClick={() => entitlements && exportCSV(entitlements)}
+          >
+            Download CSV
+          </button>
+          <button
+            className="px-3 py-1.5 text-xs font-medium border border-blue-300 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors disabled:opacity-50"
+            disabled={!entitlements?.length}
+            onClick={() => entitlements && exportPDF(entitlements)}
+          >
+            Download PDF Report
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -210,12 +228,20 @@ export default function Entitlements() {
         <div className="bg-white rounded-lg border p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">{selected.entitlement.name}</h2>
-            <button
-              className="text-sm text-gray-500 hover:text-gray-700"
-              onClick={() => setSelected(null)}
-            >
-              Close
-            </button>
+            <div className="flex gap-2 items-center">
+              <button
+                className="px-3 py-1 text-xs font-medium border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                onClick={() => exportSinglePDF(selected.entitlement)}
+              >
+                Download PDF
+              </button>
+              <button
+                className="text-sm text-gray-500 hover:text-gray-700"
+                onClick={() => setSelected(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           {/* Entitlement Summary */}
