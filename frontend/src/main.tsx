@@ -12,7 +12,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/PBL-Evaluator">
+      <BrowserRouter basename="/Demo-PBL-Evaluator">
         <App />
       </BrowserRouter>
     </QueryClientProvider>
