@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
-  base: "/PBL-Evaluator/",
+  base: "/Demo-PBL-Evaluator/",
   plugins: [react()],
   resolve: {
     alias: {
